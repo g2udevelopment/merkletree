@@ -589,3 +589,46 @@ func TestMerkleTree_MerklePath(t *testing.T) {
 		}
 	}
 }
+
+func TestMerkleTree_MerklePaths(t *testing.T) {
+	for i := 0; i < len(table); i++ {
+		var tree *MerkleTree
+		var err error
+		if table[i].defaultHashStrategy {
+			tree, err = NewTree(table[i].contents)
+		} else {
+			tree, err = NewTreeWithHashStrategy(table[i].contents, table[i].hashStrategy)
+		}
+		if err != nil {
+			t.Errorf("[case:%d] error: unexpected error: %v", table[i].testCaseId, err)
+		}
+
+		paths := tree.GetMerklePaths()
+		for j := 0; j < len(table[i].contents); j++ {
+			merklePath := paths[j].Path
+			index := paths[j].Indexes
+			hash, err := tree.Leafs[j].calculateNodeHash()
+			if err != nil {
+				t.Errorf("[case:%d] error: calculateNodeHash error: %v", table[i].testCaseId, err)
+			}
+			h := sha256.New()
+			for k := 0; k < len(merklePath); k++ {
+				if index[k] == 1 {
+					hash = append(hash, merklePath[k]...)
+				} else {
+					hash = append(merklePath[k], hash...)
+				}
+				if _, err := h.Write(hash); err != nil {
+					t.Errorf("[case:%d] error: Write error: %v", table[i].testCaseId, err)
+				}
+				hash, err = calHash(hash, table[i].hashStrategy)
+				if err != nil {
+					t.Errorf("[case:%d] error: calHash error: %v", table[i].testCaseId, err)
+				}
+			}
+			if bytes.Compare(tree.MerkleRoot(), hash) != 0 {
+				t.Errorf("[case:%d] error: expected hash equal to %v got %v", table[i].testCaseId, hash, tree.MerkleRoot())
+			}
+		}
+	}
+}

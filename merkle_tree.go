@@ -111,7 +111,7 @@ func NewTreeWithHashStrategy(cs []Content, hashStrategy func() hash.Hash) (*Merk
 	return t, nil
 }
 
-// GetMerklePath: Get Merkle path and indexes(left leaf or right leaf)
+// GetMerklePath Get Merkle path and indexes(left leaf or right leaf)
 func (m *MerkleTree) GetMerklePath(content Content) ([][]byte, []int64, error) {
 	for _, current := range m.Leafs {
 		ok, err := current.C.Equals(content)
@@ -138,6 +138,36 @@ func (m *MerkleTree) GetMerklePath(content Content) ([][]byte, []int64, error) {
 		}
 	}
 	return nil, nil, nil
+}
+
+// MerklePath holds a merklepath and the indexes
+type MerklePath struct {
+	Path    [][]byte
+	Indexes []int64
+}
+
+// GetMerklePaths Get Merkle paths and indexes(left leaf or right leaf)
+func (m *MerkleTree) GetMerklePaths() []MerklePath {
+	var paths []MerklePath
+	for _, current := range m.Leafs {
+		currentParent := current.Parent
+		var merklePath [][]byte
+		var index []int64
+		for currentParent != nil {
+			if bytes.Equal(currentParent.Left.Hash, current.Hash) {
+				merklePath = append(merklePath, currentParent.Right.Hash)
+				index = append(index, 1) // right leaf
+			} else {
+				merklePath = append(merklePath, currentParent.Left.Hash)
+				index = append(index, 0) // left leaf
+			}
+			current = currentParent
+			currentParent = currentParent.Parent
+		}
+		paths = append(paths, MerklePath{merklePath, index})
+
+	}
+	return paths
 }
 
 //buildWithContent is a helper function that for a given set of Contents, generates a
