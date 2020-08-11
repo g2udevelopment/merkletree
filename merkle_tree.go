@@ -146,25 +146,27 @@ type MerklePath struct {
 	Indexes []int64
 }
 
-// GetMerklePaths Get Merkle paths and indexes(left leaf or right leaf)
+// GetMerklePaths Get Merkle paths and indexes(left leaf or right leaf), leave out a dup node if it exists
 func (m *MerkleTree) GetMerklePaths() []MerklePath {
 	var paths []MerklePath
 	for _, current := range m.Leafs {
-		currentParent := current.Parent
-		var merklePath [][]byte
-		var index []int64
-		for currentParent != nil {
-			if bytes.Equal(currentParent.Left.Hash, current.Hash) {
-				merklePath = append(merklePath, currentParent.Right.Hash)
-				index = append(index, 1) // right leaf
-			} else {
-				merklePath = append(merklePath, currentParent.Left.Hash)
-				index = append(index, 0) // left leaf
+		if !current.dup {
+			currentParent := current.Parent
+			var merklePath [][]byte
+			var index []int64
+			for currentParent != nil {
+				if bytes.Equal(currentParent.Left.Hash, current.Hash) {
+					merklePath = append(merklePath, currentParent.Right.Hash)
+					index = append(index, 1) // right leaf
+				} else {
+					merklePath = append(merklePath, currentParent.Left.Hash)
+					index = append(index, 0) // left leaf
+				}
+				current = currentParent
+				currentParent = currentParent.Parent
 			}
-			current = currentParent
-			currentParent = currentParent.Parent
+			paths = append(paths, MerklePath{merklePath, index})
 		}
-		paths = append(paths, MerklePath{merklePath, index})
 
 	}
 	return paths
